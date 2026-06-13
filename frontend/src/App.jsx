@@ -49,7 +49,7 @@ function App() {
           </>
         )}
         {activeTab === 'calendar' && <Calendar />}
-        {activeTab === 'insights' && <Insights />}
+        {activeTab === 'insights' && <Insights />} 
         {activeTab === 'report' && <ReportExportView />}
       </main>
     </div>
