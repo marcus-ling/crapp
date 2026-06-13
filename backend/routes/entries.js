@@ -63,3 +63,29 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
+// Get daily aggregates for calendar review
+router.get('calendar/:year/:month',async(req,res)=>{
+    try{
+        const{year, month} = req.params;//month can be 1-12
+        const start = new Date(year, month-1, 1);
+        const end = new Date(year, month, 0, 23, 59, 59);
+        const entries = await Entry.find({timestamp: {$gte: start, $lte: end}});
+        //Group by day  
+        const dayMap = {};
+        entries.forEach(entry=>{
+            const day = entry.timestamp.getDate(); //1-31
+            if(!dayMap[day]) dayMap[day] = {scores: [], flagged:false};
+            dayMap[day].scores.push(entry.bristolScale);
+            if(entry.flagged) dayMap[day].flagged = true;
+        });
+        const result = Object.entries(dayMap).map(([day, data])=>{
+            day.parseInt(day);
+            avgScore = data.scores.reduce((a,b)=>a+b,0)/data.scores.length;
+            flagged: data.flagged
+        });
+        res.json(result);
+    }catch(err){
+        res.status(500).json({error: err.message});
+    } 
+});
