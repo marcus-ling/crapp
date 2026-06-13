@@ -6,8 +6,6 @@ const Entry = require('../models/Entry');
 router.post('/', async (req, res) => {
   try {
     const { bristolScale, symptoms, foodLogged, medications, notes } = req.body;
-
-    // Simple red-flag check
     const flagged = symptoms && symptoms.includes('blood');
 
     const entry = new Entry({
@@ -26,27 +24,62 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Get all entries (optionally filter by date range)
+// Get all entries (with optional date range filter)
 router.get('/', async (req, res) => {
   try {
+    console.log('📝 GET /api/entries called');
     const { start, end } = req.query;
     let filter = {};
+    
     if (start && end) {
       filter.timestamp = { $gte: new Date(start), $lte: new Date(end) };
     }
+    
     const entries = await Entry.find(filter).sort({ timestamp: -1 });
+    console.log(`✅ Found ${entries.length} entries`);
     res.json(entries);
+  } catch (err) {
+    console.error('❌ Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get single entry by ID
+router.get('/:id', async (req, res) => {
+  try {
+    const entry = await Entry.findById(req.params.id);
+    if (!entry) return res.status(404).json({ error: 'Entry not found' });
+    res.json(entry);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// Get single entry
-router.get('/:id', async (req, res) => {
+// Get daily aggregates for calendar review
+router.get('/calendar/:year/:month', async(req, res) => {
   try {
-    const entry = await Entry.findById(req.params.id);
-    if (!entry) return res.status(404).json({ error: 'Not found' });
-    res.json(entry);
+    const { year, month } = req.params;
+    const start = new Date(year, month - 1, 1);
+    const end = new Date(year, month, 0, 23, 59, 59);
+    const entries = await Entry.find({ timestamp: { $gte: start, $lte: end } });
+    
+    const dayMap = {};
+    entries.forEach(entry => {
+      const day = entry.timestamp.getDate();
+      if (!dayMap[day]) dayMap[day] = { scores: [], flagged: false };
+      dayMap[day].scores.push(entry.bristolScale);
+      if (entry.flagged) dayMap[day].flagged = true;
+    });
+    
+    const result = Object.entries(dayMap).map(([day, data]) => {
+      return {
+        day: parseInt(day),
+        avgScore: data.scores.reduce((a, b) => a + b, 0) / data.scores.length,
+        flagged: data.flagged
+      };
+    });
+    
+    res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -63,29 +96,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
-// Get daily aggregates for calendar review
-router.get('calendar/:year/:month',async(req,res)=>{
-    try{
-        const{year, month} = req.params;//month can be 1-12
-        const start = new Date(year, month-1, 1);
-        const end = new Date(year, month, 0, 23, 59, 59);
-        const entries = await Entry.find({timestamp: {$gte: start, $lte: end}});
-        //Group by day  
-        const dayMap = {};
-        entries.forEach(entry=>{
-            const day = entry.timestamp.getDate(); //1-31
-            if(!dayMap[day]) dayMap[day] = {scores: [], flagged:false};
-            dayMap[day].scores.push(entry.bristolScale);
-            if(entry.flagged) dayMap[day].flagged = true;
-        });
-        const result = Object.entries(dayMap).map(([day, data])=>{
-            day.parseInt(day);
-            avgScore = data.scores.reduce((a,b)=>a+b,0)/data.scores.length;
-            flagged: data.flagged
-        });
-        res.json(result);
-    }catch(err){
-        res.status(500).json({error: err.message});
-    } 
-});
