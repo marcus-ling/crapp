@@ -1,0 +1,1501 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>PoopLog</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #FDF2D7;
+    --card: #FFF8E8;
+    --foreground: #2A1F0E;
+    --muted: #F0E4C2;
+    --muted-fg: #8A7550;
+    --border: rgba(42,31,14,0.1);
+    --primary: #FDC97C;
+    --primary-dark: #B8860B;
+    --green: #6DB88E;
+    --teal: #5BA3A0;
+    --red: #E05C3C;
+    --radius: 16px;
+    --font: -apple-system, 'SF Pro Display', BlinkMacSystemFont, 'Inter', sans-serif;
+  }
+
+  html, body {
+    height: 100%;
+    background: #e8dcc8;
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+  }
+
+  #app {
+    width: 100%;
+    max-width: 430px;
+    min-height: 100vh;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Splash ── */
+  #splash {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: var(--bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    max-width: 430px;
+    left: 50%;
+    transform: translateX(-50%);
+    transition: opacity 0.4s ease;
+  }
+  #splash.hidden { opacity: 0; pointer-events: none; }
+
+  .splash-text {
+    font-weight: 600;
+    font-size: 2.6rem;
+    color: var(--foreground);
+    line-height: 1.15;
+    text-align: center;
+    animation: slideUp 0.55s cubic-bezier(0.34,1.4,0.64,1) both;
+  }
+  .splash-text span { display: block; }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(70px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Layout ── */
+  #header {
+    padding: 52px 24px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.45s ease 0.15s, transform 0.45s ease 0.15s;
+  }
+  #header.visible { opacity: 1; transform: translateY(0); }
+
+  .logo {
+    font-weight: 600;
+    font-size: 1.75rem;
+    color: var(--foreground);
+    line-height: 1.1;
+  }
+  .date-label {
+    font-size: 0.72rem;
+    color: var(--muted-fg);
+    margin-top: 2px;
+  }
+
+  .streak-badge {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    background: rgba(253,201,124,0.25);
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    color: var(--primary-dark);
+  }
+
+  #content {
+    flex: 1;
+    overflow-y: auto;
+    padding: 12px 24px 160px;
+    opacity: 0;
+    transform: translateY(32px);
+    transition: opacity 0.45s ease 0.22s, transform 0.45s ease 0.22s;
+  }
+  #content.visible { opacity: 1; transform: translateY(0); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 14px;
+  }
+
+  .card-hero {
+    background: linear-gradient(135deg, #FFF0C8 0%, #FFE8A8 100%);
+    border: 1px solid rgba(253,201,124,0.5);
+    border-radius: 24px;
+    padding: 20px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .toilet-deco {
+    position: absolute;
+    right: -8px;
+    bottom: -6px;
+    font-size: 7rem;
+    opacity: 0.22;
+    line-height: 1;
+    pointer-events: none;
+    user-select: none;
+  }
+
+  .label-xs {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    color: var(--muted-fg);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .big-num {
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--foreground);
+    line-height: 1;
+  }
+
+  .sub-label {
+    font-size: 0.8rem;
+    color: var(--muted-fg);
+    margin-top: 2px;
+  }
+
+  .entry-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background: rgba(255,255,255,0.65);
+    border-radius: 10px;
+    padding: 5px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    margin: 3px 3px 3px 0;
+  }
+
+  .empty-hint { font-size: 0.85rem; color: var(--muted-fg); }
+
+  /* stats grid */
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+  .stat-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+  }
+  .stat-val { font-size: 1.5rem; font-weight: 700; color: var(--foreground); }
+
+  /* ── Bristol List ── */
+  .bristol-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    border: 1.5px solid transparent;
+    background: var(--muted);
+    cursor: pointer;
+    transition: transform 0.12s, border-color 0.15s, background 0.15s;
+    margin-bottom: 8px;
+    text-align: left;
+  }
+  .bristol-btn:hover { transform: scale(1.005); }
+  .bristol-btn.selected { border-color: var(--primary); background: rgba(253,201,124,0.14); }
+  .bristol-emoji { font-size: 1.6rem; }
+  .bristol-info { flex: 1; }
+  .bristol-name { font-size: 0.9rem; font-weight: 500; color: var(--foreground); }
+  .bristol-desc { font-size: 0.75rem; color: var(--muted-fg); margin-top: 1px; }
+  .concern-badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 20px;
+    display: inline-block;
+    margin-left: 6px;
+  }
+  .dot-color { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Color Picker ── */
+  .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .swatch {
+    width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+    transition: transform 0.12s;
+    border: 2px solid transparent;
+    outline-offset: 3px;
+  }
+  .swatch:hover { transform: scale(1.12); }
+  .swatch.selected { outline: 2.5px solid var(--primary-dark); }
+
+  /* ── Duration Pills ── */
+  .dur-pills { display: flex; gap: 7px; flex-wrap: wrap; margin-top: 8px; }
+  .dur-pill {
+    padding: 6px 13px;
+    border-radius: 12px;
+    border: none;
+    cursor: pointer;
+    font-size: 0.85rem;
+    font-weight: 500;
+    background: var(--muted);
+    color: var(--foreground);
+    transition: background 0.15s, color 0.15s;
+  }
+  .dur-pill.selected { background: var(--primary); color: var(--foreground); }
+
+  /* ── Form elements ── */
+  textarea, input[type="text"] {
+    width: 100%;
+    background: var(--muted);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    font-family: var(--font);
+    font-size: 0.9rem;
+    color: var(--foreground);
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+    margin-top: 6px;
+  }
+  textarea:focus, input[type="text"]:focus { border-color: var(--primary); }
+  textarea::placeholder, input::placeholder { color: var(--muted-fg); }
+
+  /* ── Buttons ── */
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+    width: 100%; padding: 14px;
+    border: none; border-radius: 16px; cursor: pointer;
+    font-family: var(--font); font-size: 0.95rem; font-weight: 600;
+    transition: transform 0.1s, opacity 0.15s;
+  }
+  .btn:hover { opacity: 0.9; }
+  .btn:active { transform: scale(0.97); }
+  .btn-primary { background: var(--primary); color: var(--foreground); }
+  .btn-ghost {
+    background: transparent; color: var(--muted-fg);
+    border: 1px solid var(--border);
+    padding: 10px; font-size: 0.85rem;
+  }
+
+  /* ── Modal / Sheet ── */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50;
+    background: rgba(42,31,14,0.4);
+    backdrop-filter: blur(6px);
+    display: flex; align-items: flex-end; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.25s;
+  }
+  .overlay.open { opacity: 1; pointer-events: all; }
+
+  .sheet {
+    width: 100%; max-width: 430px;
+    background: var(--card);
+    border-radius: 28px 28px 0 0;
+    max-height: 92vh;
+    overflow-y: auto;
+    padding: 0 24px 32px;
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32,1.25,0.64,1);
+  }
+  .overlay.open .sheet { transform: translateY(0); }
+
+  .sheet-handle {
+    display: flex; justify-content: center;
+    padding: 12px 0 6px;
+  }
+  .handle-bar {
+    width: 40px; height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+  }
+
+  .sheet-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 20px;
+  }
+  .sheet-title { font-size: 1.2rem; font-weight: 600; color: var(--foreground); }
+
+  .close-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--muted);
+    border: none; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; color: var(--muted-fg);
+    transition: opacity 0.15s;
+  }
+  .close-btn:hover { opacity: 0.7; }
+
+  .step { display: none; }
+  .step.active { display: block; }
+
+  /* selected bristol summary */
+  .selected-summary {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px 16px; border-radius: 16px;
+    margin-bottom: 20px;
+  }
+  .change-link {
+    margin-left: auto; font-size: 0.75rem; color: var(--muted-fg);
+    cursor: pointer; text-decoration: underline; background: none; border: none;
+  }
+
+  /* AI analysis */
+  .ai-block {
+    background: rgba(253,201,124,0.2);
+    border: 1px solid rgba(253,201,124,0.5);
+    border-radius: 16px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .ai-label {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 0.78rem; font-weight: 600; color: var(--primary-dark);
+    margin-bottom: 6px;
+  }
+  .ai-text { font-size: 0.85rem; color: var(--foreground); line-height: 1.6; }
+
+  /* photo upload */
+  .photo-upload-area {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 28px; border-radius: 16px;
+    border: 1.5px dashed var(--border);
+    background: var(--muted);
+    cursor: pointer; margin-bottom: 10px;
+    transition: border-color 0.15s;
+  }
+  .photo-upload-area:hover { border-color: var(--primary); }
+  .photo-upload-area input { display: none; }
+  .upload-icon { font-size: 2rem; margin-bottom: 6px; }
+  .upload-label { font-size: 0.85rem; color: var(--muted-fg); }
+  .upload-hint { font-size: 0.75rem; color: var(--muted-fg); margin-top: 2px; }
+
+  /* analyzing spinner */
+  .analyzing {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 32px; gap: 10px;
+  }
+  .spinner {
+    font-size: 2.5rem;
+    animation: spin 1.4s linear infinite;
+  }
+  @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+  /* photo preview */
+  .photo-preview {
+    width: 100%; height: 140px;
+    object-fit: cover;
+    border-radius: 14px;
+    margin-bottom: 14px;
+    display: none;
+  }
+  .photo-preview.show { display: block; }
+
+  /* ── History ── */
+  .history-entry {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px; background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px; margin-bottom: 8px;
+    cursor: pointer; transition: transform 0.1s;
+  }
+  .history-entry:hover { transform: scale(1.003); }
+  .entry-emoji { font-size: 1.4rem; margin-top: 1px; }
+  .entry-meta { flex: 1; }
+  .entry-type { font-size: 0.875rem; font-weight: 500; color: var(--foreground); display: flex; align-items: center; gap: 6px; }
+  .entry-time { font-size: 0.73rem; color: var(--muted-fg); margin-top: 2px; }
+  .entry-detail {
+    max-height: 0; overflow: hidden;
+    transition: max-height 0.3s ease;
+  }
+  .entry-detail.open { max-height: 300px; }
+  .entry-detail-inner {
+    border-top: 1px solid var(--border);
+    margin-top: 10px; padding-top: 10px;
+  }
+
+  /* ── Calendar ── */
+  .cal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 18px;
+  }
+  .cal-title { font-size: 1.05rem; font-weight: 600; color: var(--foreground); }
+  .cal-nav-btn {
+    width: 28px; height: 28px; border-radius: 8px;
+    background: var(--muted); border: none; cursor: pointer;
+    font-size: 0.9rem; color: var(--foreground);
+    display: flex; align-items: center; justify-content: center;
+    transition: opacity 0.15s;
+  }
+  .cal-nav-btn:hover { opacity: 0.7; }
+  .cal-days-header {
+    display: grid; grid-template-columns: repeat(7,1fr);
+    gap: 4px; margin-bottom: 4px;
+  }
+  .cal-day-label { text-align: center; font-size: 0.67rem; color: var(--muted-fg); padding: 4px 0; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; }
+  .cal-cell {
+    aspect-ratio: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    color: var(--muted-fg);
+    position: relative;
+    gap: 2px;
+  }
+  .cal-cell.has-entries { background: var(--muted); color: var(--foreground); }
+  .cal-cell.today { background: var(--primary); color: var(--foreground); }
+  .cal-dots { display: flex; gap: 2px; }
+  .cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+  /* ── Insights ── */
+  .score-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 14px; }
+  .score-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 14px; text-align: center;
+  }
+  .score-val { font-size: 1.8rem; font-weight: 700; line-height: 1; }
+  .score-sub { font-size: 0.65rem; color: var(--muted-fg); margin-top: 4px; }
+
+  .trend-card {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 16px; border-radius: 16px; margin-bottom: 14px;
+  }
+  .trend-icon { font-size: 1.4rem; }
+  .trend-text { font-size: 0.875rem; font-weight: 500; color: var(--foreground); }
+  .trend-sub { font-size: 0.75rem; color: var(--muted-fg); margin-top: 2px; }
+
+  .chart-bars {
+    display: flex; align-items: flex-end; gap: 6px;
+    height: 80px; padding: 0 4px;
+  }
+  .bar-wrap { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .bar {
+    width: 100%; border-radius: 6px 6px 0 0;
+    background: var(--primary); min-height: 4px;
+    transition: height 0.4s ease;
+  }
+  .bar-label { font-size: 0.6rem; color: var(--muted-fg); }
+
+  /* ── Health Profile ── */
+  .profile-section {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 18px; margin-bottom: 14px;
+  }
+  .profile-section-header {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 14px;
+  }
+  .profile-icon { font-size: 1.1rem; }
+  .profile-section-title { font-size: 0.95rem; font-weight: 600; color: var(--foreground); }
+
+  .add-row { display: flex; gap: 8px; margin-bottom: 10px; }
+  .add-row input { flex: 1; }
+  .add-btn {
+    width: 38px; height: 38px; border: none; border-radius: 10px;
+    cursor: pointer; font-size: 1.2rem; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; margin-top: 6px;
+    transition: opacity 0.15s;
+  }
+  .add-btn:hover { opacity: 0.8; }
+
+  .tag {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 10px; border-radius: 20px;
+    font-size: 0.78rem; font-weight: 500;
+    margin: 3px;
+  }
+  .tag-remove {
+    background: none; border: none; cursor: pointer;
+    font-size: 0.75rem; opacity: 0.6;
+    display: flex; align-items: center;
+  }
+  .tag-remove:hover { opacity: 1; }
+  .no-tags { font-size: 0.8rem; color: var(--muted-fg); }
+
+  /* ── FAB ── */
+  #fab {
+    position: fixed; z-index: 40;
+    left: 50%; transform: translateX(-50%);
+    bottom: 96px;
+    opacity: 0;
+    transition: opacity 0.4s ease 0.28s;
+  }
+  #fab.visible { opacity: 1; }
+  .fab-btn {
+    width: 64px; height: 64px; border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 8px 30px rgba(253,201,124,0.5);
+    border: none; cursor: pointer;
+    font-size: 1.9rem; color: var(--foreground);
+    display: flex; align-items: center; justify-content: center;
+    transition: transform 0.1s;
+  }
+  .fab-btn:hover { transform: scale(1.06); }
+  .fab-btn:active { transform: scale(0.93); }
+
+  /* ── Bottom Nav ── */
+  #bottom-nav {
+    position: fixed; z-index: 30;
+    left: 50%; transform: translateX(-50%);
+    bottom: 20px;
+    width: calc(100% - 48px);
+    max-width: 382px;
+    opacity: 0;
+    transition: opacity 0.4s ease 0.25s;
+  }
+  #bottom-nav.visible { opacity: 1; }
+
+  .nav-pill {
+    display: flex;
+    background: var(--card);
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 24px rgba(42,31,14,0.1);
+    overflow: hidden;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 3px;
+    padding: 11px 4px;
+    background: none; border: none; cursor: pointer;
+    transition: background 0.15s;
+  }
+  .nav-btn:hover { background: rgba(253,201,124,0.1); }
+  .nav-icon { font-size: 1.2rem; }
+  .nav-label {
+    font-size: 0.58rem; font-weight: 500;
+    color: var(--muted-fg);
+    transition: color 0.15s;
+  }
+  .nav-btn.active .nav-label { color: var(--primary-dark); font-weight: 700; }
+  .nav-btn.active .nav-icon { filter: brightness(0.6) sepia(1) hue-rotate(10deg) saturate(3); }
+
+  /* ── Info notice ── */
+  .info-notice {
+    background: rgba(109,184,142,0.15);
+    border: 1px solid rgba(109,184,142,0.4);
+    border-radius: 12px; padding: 12px 14px;
+    font-size: 0.82rem; color: var(--foreground);
+    line-height: 1.5; margin-bottom: 14px;
+  }
+
+  /* section heading inside tab */
+  .tab-heading { font-size: 1.3rem; font-weight: 600; color: var(--foreground); margin-bottom: 18px; }
+
+  /* section label above lists */
+  .section-label { font-size: 0.7rem; font-weight: 600; letter-spacing: 0.06em; color: var(--muted-fg); text-transform: uppercase; margin-bottom: 8px; }
+
+  /* responsive tweaks */
+  @media (max-width: 430px) {
+    .logo { font-size: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- Splash -->
+  <div id="splash">
+    <div class="splash-text">
+      <span>Hey,</span>
+      <span>Poopster! 💩</span>
+    </div>
+  </div>
+
+  <!-- Header -->
+  <div id="header">
+    <div>
+      <div class="logo">PoopLog</div>
+      <div class="date-label" id="date-label"></div>
+    </div>
+    <div class="streak-badge" id="streak-badge" style="display:none">
+      🔥 <span id="streak-count">0</span>
+    </div>
+  </div>
+
+  <!-- Content -->
+  <div id="content">
+
+    <!-- HOME TAB -->
+    <div class="tab-panel active" id="tab-home">
+      <!-- Hero card -->
+      <div class="card-hero">
+        <div class="toilet-deco">🚽</div>
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:2;margin-bottom:14px">
+          <div>
+            <div class="label-xs">Today</div>
+            <div class="big-num" id="today-count">0</div>
+            <div class="sub-label" id="today-entry-label">entries</div>
+          </div>
+          <div id="hero-streak" style="display:none;text-align:right">
+            <div style="display:flex;align-items:center;gap:5px;justify-content:flex-end">
+              <span>🔥</span>
+              <span style="font-size:1.5rem;font-weight:700;color:var(--primary-dark)" id="hero-streak-num">0</span>
+            </div>
+            <div class="sub-label">day streak</div>
+          </div>
+        </div>
+        <div id="today-entries" style="position:relative;z-index:2">
+          <p class="empty-hint">No logs today — tap + to add one</p>
+        </div>
+      </div>
+
+      <!-- Last entry -->
+      <div class="card" id="last-entry-card" style="display:none">
+        <div class="label-xs">Last Entry</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-top:6px">
+          <span style="font-size:1.5rem" id="last-entry-emoji">✨</span>
+          <div>
+            <div style="font-size:0.875rem;font-weight:500;color:var(--foreground)" id="last-entry-name">Type 4 — Smooth sausage</div>
+            <div style="font-size:0.73rem;color:var(--muted-fg);margin-top:1px" id="last-entry-time"></div>
+          </div>
+        </div>
+        <div id="last-entry-ai" style="display:none;margin-top:10px;background:rgba(253,201,124,0.18);border-radius:12px;padding:10px">
+          <div style="font-size:0.75rem;color:var(--muted-fg);line-height:1.5" id="last-entry-ai-text"></div>
+        </div>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="stats-section" style="display:none">
+        <div class="stat-card">
+          <div class="label-xs">Total Logs</div>
+          <div class="stat-val" id="stat-total">0</div>
+        </div>
+        <div class="stat-card">
+          <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+            <span>🏆</span>
+            <div class="label-xs" style="margin-bottom:0">Streak</div>
+          </div>
+          <div class="stat-val" id="stat-streak">0 days</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY TAB -->
+    <div class="tab-panel" id="tab-history">
+      <div class="tab-heading">History</div>
+
+      <!-- Calendar -->
+      <div class="card" style="padding:20px">
+        <div class="cal-header">
+          <div class="cal-title" id="cal-title"></div>
+          <div style="display:flex;gap:6px">
+            <button class="cal-nav-btn" onclick="changeMonth(-1)">‹</button>
+            <button class="cal-nav-btn" onclick="changeMonth(1)">›</button>
+          </div>
+        </div>
+        <div class="cal-days-header">
+          <div class="cal-day-label">S</div><div class="cal-day-label">M</div>
+          <div class="cal-day-label">T</div><div class="cal-day-label">W</div>
+          <div class="cal-day-label">T</div><div class="cal-day-label">F</div>
+          <div class="cal-day-label">S</div>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+      </div>
+
+      <!-- Recent list -->
+      <div class="section-label" style="margin-top:8px">Recent Logs</div>
+      <div id="history-list">
+        <p class="empty-hint">No entries yet</p>
+      </div>
+    </div>
+
+    <!-- INSIGHTS TAB -->
+    <div class="tab-panel" id="tab-insights">
+      <div class="tab-heading">Insights</div>
+      <div id="insights-empty" style="display:none;padding:40px 0;text-align:center">
+        <div style="font-size:3rem;margin-bottom:12px">📊</div>
+        <p style="color:var(--muted-fg)">Log your first entry to see insights</p>
+      </div>
+      <div id="insights-content">
+        <div class="score-grid">
+          <div class="score-card">
+            <div class="label-xs">Score</div>
+            <div class="score-val" id="ins-score" style="color:var(--green)">—</div>
+            <div class="score-sub">/ 100</div>
+          </div>
+          <div class="score-card">
+            <div class="label-xs">Daily Avg</div>
+            <div class="score-val" id="ins-avg">—</div>
+            <div class="score-sub">per day</div>
+          </div>
+          <div class="score-card">
+            <div class="label-xs">Avg Time</div>
+            <div class="score-val" id="ins-time">—</div>
+            <div class="score-sub">minutes</div>
+          </div>
+        </div>
+
+        <div class="trend-card" id="ins-trend" style="background:rgba(109,184,142,0.12);border:1px solid rgba(109,184,142,0.3)">
+          <span class="trend-icon">➡️</span>
+          <div>
+            <div class="trend-text" id="ins-trend-text">Frequency is normal</div>
+            <div class="trend-sub" id="ins-trend-sub">1–3 times per day is healthy</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="label-xs" style="margin-bottom:12px">Last 7 Days</div>
+          <div class="chart-bars" id="chart-bars"></div>
+          <div style="display:flex;justify-content:space-between;margin-top:6px" id="chart-labels"></div>
+        </div>
+
+        <div class="card" id="peak-card" style="display:none">
+          <div class="label-xs">Peak Time</div>
+          <p style="font-size:0.875rem;color:var(--muted-fg);margin-top:6px">
+            Most logs happen around <strong style="color:var(--foreground)" id="ins-peak"></strong>
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROFILE TAB -->
+    <div class="tab-panel" id="tab-profile">
+      <div class="tab-heading">Health Profile</div>
+      <p style="font-size:0.875rem;color:var(--muted-fg);margin-bottom:16px">Personalize your AI analysis</p>
+      <div class="info-notice">Your health profile helps personalize AI analysis. Information is stored locally on your device and never shared.</div>
+
+      <div class="profile-section">
+        <div class="profile-section-header">
+          <span class="profile-icon">❤️</span>
+          <span class="profile-section-title">Health Conditions</span>
+        </div>
+        <div class="add-row">
+          <input type="text" id="input-conditions" placeholder="e.g. IBS, Crohn's disease...">
+          <button class="add-btn" style="background:#E05C3C22;color:#E05C3C" onclick="addTag('conditions')">+</button>
+        </div>
+        <div id="tags-conditions"><p class="no-tags">None added</p></div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-header">
+          <span class="profile-icon">💊</span>
+          <span class="profile-section-title">Medications</span>
+        </div>
+        <div class="add-row">
+          <input type="text" id="input-medications" placeholder="e.g. Metformin, Omeprazole...">
+          <button class="add-btn" style="background:#9b6de022;color:#9b6de0" onclick="addTag('medications')">+</button>
+        </div>
+        <div id="tags-medications"><p class="no-tags">None added</p></div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-header">
+          <span class="profile-icon">🌿</span>
+          <span class="profile-section-title">Dietary Notes</span>
+        </div>
+        <div class="add-row">
+          <input type="text" id="input-dietaryNotes" placeholder="e.g. Vegan, lactose intolerant...">
+          <button class="add-btn" style="background:#6db88e22;color:#6db88e" onclick="addTag('dietaryNotes')">+</button>
+        </div>
+        <div id="tags-dietaryNotes"><p class="no-tags">None added</p></div>
+      </div>
+
+      <div class="profile-section">
+        <div class="profile-section-header">
+          <span class="profile-icon">⚠️</span>
+          <span class="profile-section-title">Allergies</span>
+        </div>
+        <div class="add-row">
+          <input type="text" id="input-allergies" placeholder="e.g. Gluten, nuts...">
+          <button class="add-btn" style="background:rgba(253,201,124,0.25);color:var(--primary-dark)" onclick="addTag('allergies')">+</button>
+        </div>
+        <div id="tags-allergies"><p class="no-tags">None added</p></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <!-- FAB -->
+  <div id="fab">
+    <button class="fab-btn" onclick="openModal()">+</button>
+  </div>
+
+  <!-- Bottom Nav -->
+  <div id="bottom-nav">
+    <div class="nav-pill">
+      <button class="nav-btn active" data-tab="home" onclick="switchTab('home',this)">
+        <span class="nav-icon">🏠</span>
+        <span class="nav-label">Home</span>
+      </button>
+      <button class="nav-btn" data-tab="history" onclick="switchTab('history',this)">
+        <span class="nav-icon">🕐</span>
+        <span class="nav-label">History</span>
+      </button>
+      <button class="nav-btn" data-tab="insights" onclick="switchTab('insights',this)">
+        <span class="nav-icon">📊</span>
+        <span class="nav-label">Insights</span>
+      </button>
+      <button class="nav-btn" data-tab="profile" onclick="switchTab('profile',this)">
+        <span class="nav-icon">👤</span>
+        <span class="nav-label">Profile</span>
+      </button>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<!-- LOG ENTRY MODAL -->
+<div class="overlay" id="log-overlay">
+  <div class="sheet">
+    <div class="sheet-handle"><div class="handle-bar"></div></div>
+    <div class="sheet-header">
+      <div class="sheet-title" id="modal-title">Log Entry</div>
+      <button class="close-btn" onclick="closeModal()">✕</button>
+    </div>
+
+    <!-- Step 1: Bristol Type -->
+    <div class="step active" id="step-type">
+      <p style="font-size:0.85rem;color:var(--muted-fg);margin-bottom:14px">Bristol Stool Scale — select the closest match</p>
+      <div id="bristol-list"></div>
+    </div>
+
+    <!-- Step 2: Details -->
+    <div class="step" id="step-details">
+      <div class="selected-summary" id="selected-summary">
+        <span style="font-size:2rem" id="sum-emoji">✨</span>
+        <div>
+          <div style="font-size:0.9rem;font-weight:500;color:var(--foreground)" id="sum-name">Type 4</div>
+          <div style="font-size:0.78rem;color:var(--muted-fg)" id="sum-desc">Smooth, soft sausage</div>
+        </div>
+        <button class="change-link" onclick="goToStep('type')">change</button>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div class="label-xs">Duration (minutes)</div>
+        <div class="dur-pills">
+          <button class="dur-pill" onclick="setDuration(1,this)">1m</button>
+          <button class="dur-pill selected" onclick="setDuration(5,this)">5m</button>
+          <button class="dur-pill" onclick="setDuration(10,this)">10m</button>
+          <button class="dur-pill" onclick="setDuration(15,this)">15m</button>
+          <button class="dur-pill" onclick="setDuration(20,this)">20m</button>
+        </div>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div class="label-xs">Color</div>
+        <div class="color-swatches" id="color-swatches"></div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <div class="label-xs">Notes (optional)</div>
+        <textarea id="notes-input" rows="3" placeholder="Any symptoms, diet changes, stress levels..."></textarea>
+      </div>
+
+      <div style="margin-bottom:16px">
+        <div class="label-xs">Add Photo for AI Analysis</div>
+        <label class="photo-upload-area" for="photo-input">
+          <span class="upload-icon">📷</span>
+          <span class="upload-label">Take or upload a photo</span>
+          <span class="upload-hint">AI will analyze for health indicators</span>
+          <input type="file" id="photo-input" accept="image/*" onchange="handlePhoto(event)">
+        </label>
+        <button class="btn btn-ghost" onclick="skipPhoto()">Skip photo</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Analyzing -->
+    <div class="step" id="step-analyzing">
+      <div class="analyzing">
+        <div class="spinner">✨</div>
+        <p style="font-size:0.95rem;font-weight:500;color:var(--foreground)">Analyzing with AI...</p>
+        <p style="font-size:0.8rem;color:var(--muted-fg)">Checking for health indicators</p>
+      </div>
+    </div>
+
+    <!-- Step 4: Done -->
+    <div class="step" id="step-done">
+      <div id="done-selected-summary" class="selected-summary"></div>
+      <img class="photo-preview" id="photo-preview" src="" alt="Photo">
+      <div class="ai-block" id="ai-result" style="display:none">
+        <div class="ai-label">✨ AI Analysis</div>
+        <div class="ai-text" id="ai-text"></div>
+      </div>
+      <button class="btn btn-primary" onclick="saveEntry()">
+        ✓ Save Entry
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── Data ──
+const BRISTOL = [
+  { type:1, name:"Separate hard lumps", emoji:"🪨", desc:"Like nuts, hard to pass", color:"#8B6914", concern:"high" },
+  { type:2, name:"Sausage-shaped, lumpy", emoji:"🌑", desc:"Like a bunch of grapes", color:"#A0522D", concern:"medium" },
+  { type:3, name:"Like a sausage with cracks", emoji:"🌕", desc:"Cracked surface, normal", color:"#B8860B", concern:"low" },
+  { type:4, name:"Smooth, soft sausage", emoji:"✨", desc:"Ideal — smooth and soft", color:"#6DB88E", concern:"none" },
+  { type:5, name:"Soft blobs, clear edges", emoji:"💧", desc:"Easy to pass", color:"#5BA3A0", concern:"low" },
+  { type:6, name:"Fluffy, mushy pieces", emoji:"🌊", desc:"Mushy, ragged edges", color:"#FDC97C", concern:"medium" },
+  { type:7, name:"Watery, no solid pieces", emoji:"💦", desc:"Entirely liquid", color:"#E05C3C", concern:"high" },
+];
+
+const COLORS = [
+  { id:"brown", label:"Brown", hex:"#8B4513" },
+  { id:"dark-brown", label:"Dark Brown", hex:"#3B1A08" },
+  { id:"light-brown", label:"Light Brown", hex:"#C68642" },
+  { id:"yellow", label:"Yellow", hex:"#D4AC0D" },
+  { id:"green", label:"Green", hex:"#2E7D32" },
+  { id:"black", label:"Black", hex:"#1A1A1A" },
+  { id:"red", label:"Red", hex:"#C62828" },
+];
+
+const CONCERN_COLORS = { none:"#6DB88E", low:"#5BA3A0", medium:"#FDC97C", high:"#E05C3C" };
+const CONCERN_BG = { none:"#6DB88E22", low:"#5BA3A022", medium:"#FDC97C22", high:"#E05C3C22" };
+
+// Storage keys
+const ENTRIES_KEY = "pooplog_entries";
+const PROFILE_KEY = "pooplog_profile";
+
+// State
+let entries = [];
+let profile = { conditions:[], medications:[], dietaryNotes:[], allergies:[] };
+let currentStep = "type";
+let selectedType = null;
+let selectedColor = "brown";
+let selectedDuration = 5;
+let photoDataUrl = null;
+let currentTab = "home";
+let calViewDate = new Date();
+
+// ── Init ──
+(function init() {
+  try { entries = JSON.parse(localStorage.getItem(ENTRIES_KEY)) || []; } catch {}
+  try { profile = JSON.parse(localStorage.getItem(PROFILE_KEY)) || profile; } catch {}
+
+  setDateLabel();
+  buildBristolList();
+  buildColorSwatches();
+  buildProfileTags();
+
+  // Splash animation
+  setTimeout(() => {
+    document.getElementById("splash").classList.add("hidden");
+    document.getElementById("header").classList.add("visible");
+    document.getElementById("content").classList.add("visible");
+    document.getElementById("fab").classList.add("visible");
+    document.getElementById("bottom-nav").classList.add("visible");
+  }, 1700);
+
+  renderHome();
+  renderHistory();
+  renderInsights();
+  renderCalendar();
+})();
+
+function setDateLabel() {
+  const d = new Date();
+  document.getElementById("date-label").textContent =
+    d.toLocaleDateString("en-US", { weekday:"long", month:"long", day:"numeric" });
+}
+
+// ── Tab switching ──
+function switchTab(tab, btn) {
+  document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+  document.getElementById("tab-" + tab).classList.add("active");
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  currentTab = tab;
+  if (tab === "history") { renderHistory(); renderCalendar(); }
+  if (tab === "insights") renderInsights();
+}
+
+// ── Home render ──
+function renderHome() {
+  const today = new Date().toDateString();
+  const todayEntries = entries.filter(e => new Date(e.timestamp).toDateString() === today);
+  const streak = getStreak();
+
+  document.getElementById("today-count").textContent = todayEntries.length;
+  document.getElementById("today-entry-label").textContent = todayEntries.length === 1 ? "entry" : "entries";
+
+  // streak badge header
+  if (streak > 0) {
+    document.getElementById("streak-badge").style.display = "flex";
+    document.getElementById("streak-count").textContent = streak;
+    document.getElementById("hero-streak").style.display = "block";
+    document.getElementById("hero-streak-num").textContent = streak;
+  } else {
+    document.getElementById("streak-badge").style.display = "none";
+    document.getElementById("hero-streak").style.display = "none";
+  }
+
+  // today pills
+  const container = document.getElementById("today-entries");
+  if (todayEntries.length === 0) {
+    container.innerHTML = '<p class="empty-hint">No logs today — tap + to add one</p>';
+  } else {
+    container.innerHTML = todayEntries.map(e => {
+      const b = BRISTOL.find(x => x.type === e.bristolType);
+      return `<span class="entry-pill">
+        <span>${b.emoji}</span>
+        <span style="color:${b.color}">${fmtTime(e.timestamp)}</span>
+      </span>`;
+    }).join("");
+  }
+
+  // last entry card
+  const last = entries[0];
+  const lastCard = document.getElementById("last-entry-card");
+  if (last) {
+    lastCard.style.display = "block";
+    const b = BRISTOL.find(x => x.type === last.bristolType);
+    document.getElementById("last-entry-emoji").textContent = b.emoji;
+    document.getElementById("last-entry-name").textContent = `Type ${b.type} — ${b.name}`;
+    document.getElementById("last-entry-time").textContent =
+      new Date(last.timestamp).toLocaleDateString("en-US",{month:"short",day:"numeric"}) + " at " + fmtTime(last.timestamp);
+    const aiDiv = document.getElementById("last-entry-ai");
+    if (last.aiAnalysis) {
+      aiDiv.style.display = "block";
+      document.getElementById("last-entry-ai-text").textContent = last.aiAnalysis;
+    } else {
+      aiDiv.style.display = "none";
+    }
+  } else {
+    lastCard.style.display = "none";
+  }
+
+  // stats
+  const statsSection = document.getElementById("stats-section");
+  if (entries.length > 0) {
+    statsSection.style.display = "grid";
+    document.getElementById("stat-total").textContent = entries.length;
+    document.getElementById("stat-streak").textContent = streak + " days";
+  } else {
+    statsSection.style.display = "none";
+  }
+}
+
+// ── Insights render ──
+function renderInsights() {
+  if (entries.length === 0) {
+    document.getElementById("insights-empty").style.display = "block";
+    document.getElementById("insights-content").style.display = "none";
+    return;
+  }
+  document.getElementById("insights-empty").style.display = "none";
+  document.getElementById("insights-content").style.display = "block";
+
+  const avgDur = entries.reduce((s,e) => s+(e.duration||5),0)/entries.length;
+  document.getElementById("ins-time").textContent = Math.round(avgDur);
+
+  // health score
+  const typeCounts = {};
+  entries.forEach(e => { typeCounts[e.bristolType] = (typeCounts[e.bristolType]||0)+1; });
+  const ideal = typeCounts[4]||0;
+  const good = (typeCounts[3]||0)+(typeCounts[5]||0);
+  const score = Math.round(((ideal*1 + good*0.7)/entries.length)*100);
+  const scoreEl = document.getElementById("ins-score");
+  scoreEl.textContent = score;
+  scoreEl.style.color = score>=60?"#6DB88E":score>=40?"#FDC97C":"#E05C3C";
+
+  // 7-day avg
+  const days7 = entries.filter(e => (Date.now()-new Date(e.timestamp).getTime()) < 7*86400000);
+  const avg = (days7.length/7).toFixed(1);
+  document.getElementById("ins-avg").textContent = avg;
+
+  // trend
+  const avgF = days7.length/7;
+  const trend = avgF >= 0.8 && avgF <= 2.5 ? "normal" : avgF < 0.8 ? "low" : "high";
+  const trendCard = document.getElementById("ins-trend");
+  const trendMap = {
+    normal: { icon:"➡️", text:"Frequency is normal", sub:"1–3 times per day is healthy", bg:"rgba(109,184,142,0.12)", border:"rgba(109,184,142,0.3)" },
+    low: { icon:"📉", text:"Less frequent than normal", sub:"Consider increasing fiber and water", bg:"rgba(253,201,124,0.15)", border:"rgba(253,201,124,0.4)" },
+    high: { icon:"📈", text:"More frequent than normal", sub:"Monitor for IBS triggers or infections", bg:"rgba(224,92,60,0.1)", border:"rgba(224,92,60,0.25)" },
+  };
+  const t = trendMap[trend];
+  trendCard.style.background = t.bg;
+  trendCard.style.border = `1px solid ${t.border}`;
+  trendCard.querySelector(".trend-icon").textContent = t.icon;
+  document.getElementById("ins-trend-text").textContent = t.text;
+  document.getElementById("ins-trend-sub").textContent = t.sub;
+
+  // bar chart
+  const barsEl = document.getElementById("chart-bars");
+  const labelsEl = document.getElementById("chart-labels");
+  const dailyCounts = [];
+  const dayLabels = [];
+  for (let i=6;i>=0;i--) {
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const cnt = entries.filter(e => new Date(e.timestamp).toDateString()===d.toDateString()).length;
+    dailyCounts.push(cnt);
+    dayLabels.push(d.toLocaleDateString("en-US",{weekday:"short"}));
+  }
+  const maxCnt = Math.max(...dailyCounts, 1);
+  barsEl.innerHTML = dailyCounts.map((cnt,i) => `
+    <div class="bar-wrap">
+      <div class="bar" style="height:${Math.max(4,(cnt/maxCnt)*72)}px"></div>
+      <div class="bar-label">${dayLabels[i]}</div>
+    </div>
+  `).join("");
+  labelsEl.innerHTML = "";
+
+  // peak time
+  const hours = {};
+  entries.forEach(e => { const h=new Date(e.timestamp).getHours(); hours[h]=(hours[h]||0)+1; });
+  const peakHour = Object.entries(hours).sort(([,a],[,b])=>b-a)[0];
+  if (peakHour) {
+    const h = parseInt(peakHour[0]);
+    const label = h===0?"12 AM":h<12?`${h} AM`:h===12?"12 PM":`${h-12} PM`;
+    document.getElementById("ins-peak").textContent = label;
+    document.getElementById("peak-card").style.display = "block";
+  }
+}
+
+// ── History render ──
+function renderHistory() {
+  const list = document.getElementById("history-list");
+  if (entries.length === 0) { list.innerHTML = '<p class="empty-hint">No entries yet</p>'; return; }
+
+  const sorted = [...entries].sort((a,b) => new Date(b.timestamp)-new Date(a.timestamp)).slice(0,30);
+  list.innerHTML = sorted.map((e,i) => {
+    const b = BRISTOL.find(x => x.type === e.bristolType);
+    const colorHex = COLORS.find(c=>c.id===e.color)?.hex || "#8B4513";
+    return `
+    <div class="history-entry" onclick="toggleHistoryEntry(${i})">
+      <span class="entry-emoji">${b.emoji}</span>
+      <div class="entry-meta">
+        <div class="entry-type">
+          Type ${b.type}
+          <span style="width:9px;height:9px;border-radius:50%;background:${colorHex};display:inline-block"></span>
+          ${e.aiAnalysis ? "✨" : ""}
+        </div>
+        <div class="entry-time">
+          ${new Date(e.timestamp).toLocaleDateString("en-US",{month:"short",day:"numeric"})} at ${fmtTime(e.timestamp)}
+          ${e.duration ? `· ${e.duration}m` : ""}
+        </div>
+        <div class="entry-detail" id="hist-detail-${i}">
+          <div class="entry-detail-inner">
+            ${e.photo ? `<img src="${e.photo}" style="width:100%;height:100px;object-fit:cover;border-radius:10px;margin-bottom:8px">` : ""}
+            ${e.aiAnalysis ? `<div style="background:rgba(253,201,124,0.2);border-radius:10px;padding:10px;margin-bottom:8px">
+              <div style="font-size:0.72rem;color:var(--primary-dark);font-weight:600;margin-bottom:4px">✨ AI Analysis</div>
+              <p style="font-size:0.8rem;color:var(--foreground);line-height:1.5">${e.aiAnalysis}</p>
+            </div>` : ""}
+            ${e.notes ? `<p style="font-size:0.8rem;color:var(--muted-fg)">📝 ${e.notes}</p>` : ""}
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function toggleHistoryEntry(i) {
+  const el = document.getElementById("hist-detail-"+i);
+  el.classList.toggle("open");
+}
+
+// ── Calendar render ──
+function renderCalendar() {
+  const y = calViewDate.getFullYear();
+  const m = calViewDate.getMonth();
+  document.getElementById("cal-title").textContent =
+    calViewDate.toLocaleDateString("en-US",{month:"long",year:"numeric"});
+
+  const firstDay = new Date(y,m,1).getDay();
+  const daysInMonth = new Date(y,m+1,0).getDate();
+  const today = new Date().toDateString();
+
+  const byDate = {};
+  entries.forEach(e => {
+    const k = new Date(e.timestamp).toDateString();
+    if (!byDate[k]) byDate[k]=[];
+    byDate[k].push(e);
+  });
+
+  let html = "";
+  for (let i=0;i<firstDay;i++) html += '<div class="cal-cell"></div>';
+  for (let d=1;d<=daysInMonth;d++) {
+    const date = new Date(y,m,d);
+    const key = date.toDateString();
+    const dayEntries = byDate[key]||[];
+    const isToday = key===today;
+    let cls = "cal-cell";
+    if (isToday) cls += " today";
+    else if (dayEntries.length) cls += " has-entries";
+    const dots = dayEntries.slice(0,3).map(e => {
+      const b = BRISTOL.find(x=>x.type===e.bristolType);
+      return `<span class="cal-dot" style="background:${isToday?"rgba(255,255,255,0.8)":b.color}"></span>`;
+    }).join("");
+    html += `<div class="${cls}">
+      <span>${d}</span>
+      ${dayEntries.length ? `<div class="cal-dots">${dots}</div>` : ""}
+    </div>`;
+  }
+  document.getElementById("cal-grid").innerHTML = html;
+}
+
+function changeMonth(dir) {
+  calViewDate.setMonth(calViewDate.getMonth()+dir);
+  renderCalendar();
+}
+
+// ── Profile tags ──
+function buildProfileTags() {
+  ["conditions","medications","dietaryNotes","allergies"].forEach(k => renderTags(k));
+  // enter key
+  ["conditions","medications","dietaryNotes","allergies"].forEach(k => {
+    const inp = document.getElementById("input-"+k);
+    inp.addEventListener("keydown", e => { if(e.key==="Enter") addTag(k); });
+  });
+}
+
+const TAG_COLORS = {
+  conditions:{ bg:"#E05C3C22", color:"#C0392B" },
+  medications:{ bg:"#9b6de022", color:"#7D3C98" },
+  dietaryNotes:{ bg:"#6DB88E22", color:"#1E8449" },
+  allergies:{ bg:"rgba(253,201,124,0.25)", color:"#B8860B" },
+};
+
+function renderTags(key) {
+  const container = document.getElementById("tags-"+key);
+  const items = profile[key]||[];
+  if (items.length===0) { container.innerHTML='<p class="no-tags">None added</p>'; return; }
+  const tc = TAG_COLORS[key];
+  container.innerHTML = items.map((item,i) => `
+    <span class="tag" style="background:${tc.bg};color:${tc.color}">
+      ${item}
+      <button class="tag-remove" onclick="removeTag('${key}',${i})">✕</button>
+    </span>`).join("");
+}
+
+function addTag(key) {
+  const inp = document.getElementById("input-"+key);
+  const val = inp.value.trim();
+  if (!val) return;
+  profile[key].push(val);
+  inp.value = "";
+  saveProfile();
+  renderTags(key);
+}
+
+function removeTag(key, idx) {
+  profile[key].splice(idx,1);
+  saveProfile();
+  renderTags(key);
+}
+
+function saveProfile() {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+}
+
+// ── Modal / Log Entry ──
+function buildBristolList() {
+  const list = document.getElementById("bristol-list");
+  list.innerHTML = BRISTOL.map(b => {
+    const concBadge = b.concern==="none"
+      ? `<span class="concern-badge" style="background:#6DB88E22;color:#6DB88E">ideal</span>`
+      : `<span class="concern-badge" style="background:${CONCERN_BG[b.concern]};color:${CONCERN_COLORS[b.concern]}">${b.concern} concern</span>`;
+    return `
+    <button class="bristol-btn" id="bristol-btn-${b.type}" onclick="selectBristol(${b.type})">
+      <span class="bristol-emoji">${b.emoji}</span>
+      <div class="bristol-info">
+        <div class="bristol-name">Type ${b.type} ${concBadge}</div>
+        <div class="bristol-desc">${b.desc}</div>
+      </div>
+      <span class="dot-color" style="background:${b.color}"></span>
+    </button>`;
+  }).join("");
+}
+
+function buildColorSwatches() {
+  document.getElementById("color-swatches").innerHTML = COLORS.map(c => `
+    <div class="swatch ${c.id==="brown"?"selected":""}" 
+      style="background:${c.hex}" 
+      title="${c.label}" 
+      onclick="selectColor('${c.id}',this)"></div>
+  `).join("");
+}
+
+function openModal() {
+  selectedType = null;
+  selectedColor = "brown";
+  selectedDuration = 5;
+  photoDataUrl = null;
+  document.getElementById("notes-input").value = "";
+  document.getElementById("photo-preview").classList.remove("show");
+  document.getElementById("ai-result").style.display = "none";
+  document.getElementById("ai-text").textContent = "";
+  // reset duration
+  document.querySelectorAll(".dur-pill").forEach(p => p.classList.remove("selected"));
+  document.querySelectorAll(".dur-pill")[1].classList.add("selected");
+  // reset color
+  document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+  document.querySelector(".swatch").classList.add("selected");
+  // reset bristol
+  document.querySelectorAll(".bristol-btn").forEach(b => b.classList.remove("selected"));
+  goToStep("type");
+  document.getElementById("log-overlay").classList.add("open");
+}
+
+function closeModal() {
+  document.getElementById("log-overlay").classList.remove("open");
+}
+
+function goToStep(step) {
+  currentStep = step;
+  document.querySelectorAll(".step").forEach(s => s.classList.remove("active"));
+  document.getElementById("step-"+step).classList.add("active");
+  document.getElementById("modal-title").textContent =
+    step==="type" ? "Log Entry" :
+    step==="details" ? "Details" :
+    step==="analyzing" ? "Analyzing..." :
+    "Save Entry";
+}
+
+function selectBristol(type) {
+  selectedType = type;
+  document.querySelectorAll(".bristol-btn").forEach(b => b.classList.remove("selected"));
+  document.getElementById("bristol-btn-"+type).classList.add("selected");
+  const b = BRISTOL.find(x=>x.type===type);
+  // populate summary
+  document.getElementById("sum-emoji").textContent = b.emoji;
+  document.getElementById("sum-name").textContent = `Type ${b.type} — ${b.name}`;
+  document.getElementById("sum-desc").textContent = b.desc;
+  document.getElementById("selected-summary").style.background = `${b.color}18`;
+  setTimeout(() => goToStep("details"), 220);
+}
+
+function selectColor(id, el) {
+  selectedColor = id;
+  document.querySelectorAll(".swatch").forEach(s => s.classList.remove("selected"));
+  el.classList.add("selected");
+}
+
+function setDuration(d, el) {
+  selectedDuration = d;
+  document.querySelectorAll(".dur-pill").forEach(p => p.classList.remove("selected"));
+  el.classList.add("selected");
+}
+
+function handlePhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    photoDataUrl = ev.target.result;
+    goToStep("analyzing");
+    setTimeout(() => {
+      generateAI();
+      showDoneStep();
+    }, 2200);
+  };
+  reader.readAsDataURL(file);
+}
+
+function skipPhoto() {
+  photoDataUrl = null;
+  showDoneStep();
+}
+
+function generateAI() {
+  if (!selectedType) return "";
+  const b = BRISTOL.find(x=>x.type===selectedType);
+  const analyses = {
+    none: `Your stool appears healthy (Type ${selectedType}). The smooth, well-formed consistency indicates good gut motility and adequate hydration. No immediate concerns detected.`,
+    low: `Your stool (Type ${selectedType}) is within a normal range but slightly ${selectedType<=3?"toward constipation":"loose"}. Consider ${selectedType<=3?"increasing fiber and water intake":"monitoring for any dietary triggers"}.`,
+    medium: `Your stool (Type ${selectedType}) indicates ${selectedType<=3?"some constipation — try more fiber, movement, and water":"looser than ideal — this can indicate irritable bowel, food sensitivities, or stress"}. Track if this persists.`,
+    high: `Your stool (Type ${selectedType}) shows ${selectedType===1?"significant constipation. Increase water intake, add fiber, consider movement. Seek medical advice if persistent.":"diarrhea. Stay hydrated with electrolytes. Seek medical care if it lasts more than 2 days or is accompanied by fever."}`,
+  };
+  return analyses[b.concern] || analyses.low;
+}
+
+function showDoneStep() {
+  const b = selectedType ? BRISTOL.find(x=>x.type===selectedType) : BRISTOL[3];
+  document.getElementById("done-selected-summary").innerHTML = `
+    <span style="font-size:2rem">${b.emoji}</span>
+    <div>
+      <div style="font-size:0.9rem;font-weight:500;color:var(--foreground)">Type ${b.type} — ${b.name}</div>
+      <div style="font-size:0.78rem;color:var(--muted-fg)">${b.desc}</div>
+    </div>`;
+  document.getElementById("done-selected-summary").style.background = `${b.color}18`;
+  document.getElementById("done-selected-summary").style.padding = "14px 16px";
+  document.getElementById("done-selected-summary").style.borderRadius = "16px";
+  document.getElementById("done-selected-summary").style.marginBottom = "16px";
+  document.getElementById("done-selected-summary").style.display = "flex";
+  document.getElementById("done-selected-summary").style.alignItems = "center";
+  document.getElementById("done-selected-summary").style.gap = "12px";
+
+  if (photoDataUrl) {
+    const img = document.getElementById("photo-preview");
+    img.src = photoDataUrl;
+    img.classList.add("show");
+  }
+
+  const aiAnalysis = photoDataUrl ? generateAI() : null;
+  if (aiAnalysis) {
+    document.getElementById("ai-text").textContent = aiAnalysis;
+    document.getElementById("ai-result").style.display = "block";
+  }
+
+  goToStep("done");
+}
+
+function saveEntry() {
+  const b = BRISTOL.find(x=>x.type===selectedType);
+  const aiText = document.getElementById("ai-text").textContent;
+  const entry = {
+    id: Date.now().toString(),
+    timestamp: new Date().toISOString(),
+    bristolType: selectedType,
+    color: selectedColor,
+    notes: document.getElementById("notes-input").value.trim(),
+    photo: photoDataUrl||undefined,
+    aiAnalysis: aiText||undefined,
+    duration: selectedDuration,
+  };
+  entries.unshift(entry);
+  localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
+  closeModal();
+  renderHome();
+  if (currentTab==="history") { renderHistory(); renderCalendar(); }
+  if (currentTab==="insights") renderInsights();
+}
+
+// ── Helpers ──
+function getStreak() {
+  if (entries.length===0) return 0;
+  const today = new Date();
+  let streak = 0;
+  const checking = new Date(today);
+  const dateSet = new Set(entries.map(e => new Date(e.timestamp).toDateString()));
+  while (dateSet.has(checking.toDateString())) {
+    streak++;
+    checking.setDate(checking.getDate()-1);
+    if (streak>365) break;
+  }
+  return streak;
+}
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString("en-US",{hour:"numeric",minute:"2-digit"});
+}
+
+// close modal on overlay click
+document.getElementById("log-overlay").addEventListener("click", function(e) {
+  if (e.target===this) closeModal();
+});
+</script>
+</body>
+</html>
