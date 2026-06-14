@@ -2,17 +2,16 @@
 const express = require('express');
 const router = express.Router();
 const Entry = require('../models/Entry');
+const path = require('path'); // Make sure path is required at the top!
 const { GoogleGenerativeAI } = require('@google/generative-ai');
 
-// 1. Move this line ABOVE the genAI setup so the computer reads the file first!
-require('dotenv').config({ path: './backend/.env' }); 
+// Force an absolute path lookup up one directory level
+require('dotenv').config({ path: path.join(__dirname, '../../.env') }); 
 
-// 2. Now process.env will exist and find your API key perfectly
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// 3. Define your model configuration
-const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
-
+// Set this strictly to the official production engine string
+const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 // ... the rest of your POST route code remains exactly the same
 
 
