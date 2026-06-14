@@ -5,17 +5,20 @@ const Entry = require('../models/Entry');
 // Create a new entry
 router.post('/', async (req, res) => {
   try {
-    const { bristolScale, symptoms, foodLogged, medications, notes } = req.body;
-    const flagged = symptoms && symptoms.includes('blood');
+    // accept both 'color' (frontend) and legacy 'colour'
+    const { date, timestamp, bristolScale, color, colour, duration, notes } = req.body;
 
-    const entry = new Entry({
+    const entryData = {
+      // prefer timestamp, fall back to date or now
+      timestamp: timestamp || date || new Date().toISOString(),
       bristolScale,
-      symptoms,
-      foodLogged,
-      medications,
-      notes,
-      flagged
-    });
+      // prefer 'color' then legacy 'colour'
+      color: color || colour,
+      duration,
+      notes
+    };
+
+    const entry = new Entry(entryData);
 
     await entry.save();
     res.status(201).json(entry);
