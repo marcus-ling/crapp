@@ -35,7 +35,7 @@ export default function ReportExportView({ entries = [] }) {
   // Frequency mapping calculation
   const distributionCounts = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
   entries.forEach(entry => {
-    const type = parseInt(entry.bristolType, 10);
+    const type = parseInt(entry.bristolScale, 10);
     if (type >= 1 && type <= 7) {
       distributionCounts[type] += 1;
     }
