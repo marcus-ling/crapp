@@ -1,4 +1,4 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import './Report.css';
 
 // 1. Explicitly export or declare the scale configuration array
@@ -14,6 +14,37 @@ const BRISTOL_SCALE = [
 
 export default function ReportExportView({ entries = [] }) {
   
+  // New States to manage the live dynamic AI summary text and loading speeds
+  const [liveAISummary, setLiveAISummary] = useState("");
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+
+  // Automatically fetch live analysis from the backend when entries change
+  useEffect(() => {
+    if (!entries || entries.length === 0) return;
+
+    async function fetchLiveAISummary() {
+      try {
+        setIsLoadingAI(true);
+        // Note: Replace 'localhost:5000' with your live Vultr server IP when deploying!
+        const response = await fetch('http://localhost:5000/api/insights/ai-summary', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        const data = await response.json();
+        if (data.summary) {
+          setLiveAISummary(data.summary);
+        }
+      } catch (err) {
+        console.error("Failed to fetch live AI summary:", err);
+        setLiveAISummary("Unable to generate analysis at this time. Please check your internet connection.");
+      } finally {
+        setIsLoadingAI(false);
+      }
+    }
+
+    fetchLiveAISummary();
+  }, [entries]);
+
   if (!entries || entries.length === 0) {
     return (
       <div className="report-empty">
@@ -129,28 +160,29 @@ export default function ReportExportView({ entries = [] }) {
         })}
       </section>
 
-      {/* Section 3: AI Insights Logs List */}
+      {/* Section 3: Dynamic Live AI Insights */}
       <section className="report-section">
-        <h3 className="section-label">AI Analysis Notes</h3>
-        {medicalAILogs.length === 0 ? (
-          <p style={{ fontSize: '0.8rem', color: 'var(--muted-fg)', margin: 0 }}>
-            No automatic trend notes captured inside current database log selections.
-          </p>
+        <h3 className="section-label">AI Analysis Report</h3>
+        {isLoadingAI ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px' }}>
+            <span style={{ fontSize: '1.2rem', animation: 'spin 1s linear infinite' }}>🔄</span>
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted-fg)', margin: 0 }}>
+              Gemini is evaluating your 30-day health metrics trend...
+            </p>
+          </div>
+        ) : liveAISummary ? (
+          <div className="report-ai-entry" style={{ borderLeft: '3px solid var(--primary)' }}>
+            <div className="report-ai-entry__meta" style={{ marginBottom: '8px', color: 'var(--primary)' }}>
+              🤖 Live Gemini Insight Engine
+            </div>
+            <p className="report-ai-entry__text" style={{ whiteSpace: 'pre-line', margin: 0, lineHeight: '1.4' }}>
+              {liveAISummary}
+            </p>
+          </div>
         ) : (
-          medicalAILogs.slice(0, 5).map(e => {
-            // FIX: Added safe lookup protection if type mapping isn't fully found
-            const entryType = parseInt(e.bristolType, 10);
-            const scaleMeta = BRISTOL_SCALE.find(x => x.type === entryType) || { emoji: "📝", label: `Type ${entryType || 'Unknown'}` };
-
-            return (
-              <div className="report-ai-entry" key={e._id || e.id || e.timestamp}>
-                <div className="report-ai-entry__meta">
-                  {scaleMeta.emoji} {scaleMeta.label} · {new Date(e.timestamp).toLocaleDateString(undefined, {month: 'short', day: 'numeric'})}
-                </div>
-                <p className="report-ai-entry__text">{e.aiAnalysis}</p>
-              </div>
-            );
-          })
+          <p style={{ fontSize: '0.8rem', color: 'var(--muted-fg)', margin: 0 }}>
+            No dynamic trend notes generated. Check connection to your backend server.
+          </p>
         )}
       </section>
 
