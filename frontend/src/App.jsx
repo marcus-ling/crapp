@@ -50,7 +50,9 @@ function App() {
         )}
         {activeTab === 'calendar' && <Calendar />}
         {activeTab === 'insights' && <Insights />} 
-        {activeTab === 'report' && <ReportExportView />}
+        
+        {/* Pass the dynamic database tracking logs array properties down to the Report View component */}
+        {activeTab === 'report' && <ReportExportView entries={entries} />}
       </main>
     </div>
   );

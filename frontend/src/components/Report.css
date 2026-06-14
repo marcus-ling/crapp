@@ -1,0 +1,205 @@
+/* Report Element Layout Architecture */
+.report-section {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.report-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.report-stat-row:last-child {
+  border-bottom: none;
+}
+
+.report-stat-label {
+  font-size: 0.85rem;
+  color: var(--muted-fg);
+}
+
+.report-stat-val {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Custom Multi-row Horizontal Chart Rules (Synced with Report.jsx layout tags) */
+.report-type-row, .report-distribution-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.report-type-row:last-child, .report-distribution-row:last-child {
+  margin-bottom: 0;
+}
+
+.report-distribution-emoji {
+  font-size: 1.1rem;
+}
+
+.report-type-bar-track, .report-bar-track {
+  flex: 1;
+  background: var(--muted, #f0f0f0);
+  border-radius: 4px;
+  height: 8px;
+  overflow: hidden;
+}
+
+.report-type-bar-fill, .report-bar-fill {
+  height: 8px;
+  border-radius: 4px;
+  transition: width 0.4s ease;
+}
+
+.report-type-count, .report-distribution-count {
+  font-size: 0.8rem;
+  color: var(--muted-fg);
+  min-width: 24px;
+  text-align: right;
+}
+
+/* AI Logs Summary Layout block */
+.report-ai-entry {
+  background: rgba(253, 201, 124, 0.12);
+  border: 1px solid rgba(253, 201, 124, 0.3);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.report-ai-entry:last-child {
+  margin-bottom: 0;
+}
+
+.report-ai-entry__meta, .report-ai-meta {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--primary-dark);
+  margin-bottom: 4px;
+}
+
+.report-ai-entry__text, .report-ai-text {
+  font-size: 0.8rem;
+  color: var(--foreground);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* UI Informational Alerts and Warnings badges */
+.concern-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  display: inline-block;
+}
+.concern--none { 
+  color: var(--green); 
+  background: rgba(109, 184, 142, 0.13); 
+}
+
+.info-notice {
+  background: rgba(109, 184, 142, 0.15);
+  border: 1px solid rgba(109, 184, 142, 0.4);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 0.82rem;
+  color: var(--foreground);
+  line-height: 1.5;
+  margin-bottom: 14px;
+}
+
+/* Empty Placeholder View Canvas definitions */
+.report-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 0;
+  gap: 12px;
+}
+
+/* ============================================================
+   PRINT LAYER: FORMATS WINDOW AS CLEAN MEDICAL DOCUMENT
+   ============================================================ */
+@media print {
+  /* 1. Hide the global tab bar, alert headers, and all active utility action buttons */
+  .tab-navigation,
+  .mobile-canvas > nav,
+  .app-content-area > :not(#tab-report),
+  #tab-report button,
+  .btn,
+  .info-notice {
+    display: none !important;
+  }
+
+  /* 2. Flatten page wrappers to prevent canvas clipping in standard print layouts */
+  body, 
+  .mobile-canvas, 
+  .app-content-area, 
+  #tab-report {
+    background: #ffffff !important;
+    color: #000000 !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  /* 3. Strip custom colors and convert display cards into high-contrast bounded boxes */
+  .report-section {
+    background: #ffffff !important;
+    border: 1px solid #000000 !important;
+    page-break-inside: avoid;
+    padding: 14px !important;
+    margin-bottom: 20px !important;
+    border-radius: 4px !important;
+  }
+
+  .report-stat-label {
+    color: #555555 !important;
+  }
+
+  .report-stat-val {
+    color: #000000 !important;
+  }
+
+  /* 4. Force browser background layers to render distribution chart bars explicitly */
+  .report-type-bar-track, .report-bar-track {
+    background: #e5e5e5 !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    border: 1px solid #cccccc !important;
+  }
+
+  .report-type-bar-fill, .report-bar-fill {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 5. Re-format warm digital note blocks to print as safe monochrome boxes */
+  .report-ai-entry {
+    background: #fafafa !important;
+    border: 1px dashed #666666 !important;
+    border-radius: 6px !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  .report-ai-entry__meta, .report-ai-meta {
+    color: #000000 !important;
+  }
+
+  .report-ai-entry__text, .report-ai-text {
+    color: #111111 !important;
+  }
+}
