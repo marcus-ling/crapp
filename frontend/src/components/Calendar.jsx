@@ -25,7 +25,7 @@ export default function Calendar() {
 
   useEffect(() => {
     // Fetches the aggregated heatmap information from your Phase 2, Step 3 backend route [cite: 313, 323]
-    fetch(`http://localhost:5000/api/entries/calendar/${year}/${month}`)
+    fetch(`http://149.248.61.125:5000/api/entries/calendar/${year}/${month}`)
       .then(res => res.json())
       .then(data => {
         const map = {};

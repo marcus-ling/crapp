@@ -12,7 +12,7 @@ export default function Insights() {
   });
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/entries')
+    fetch('http://149.248.61.125:5000/api/entries')
       .then(res => {
         if (!res.ok) throw new Error("Network response was not ok");
         return res.json();
@@ -59,7 +59,7 @@ export default function Insights() {
     }
 
     try {
-      const res = await fetch('http://localhost:5000/api/insights/ai-summary', {
+      const res = await fetch('http://149.248.61.125:5000/api/insights/ai-summary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }
       });

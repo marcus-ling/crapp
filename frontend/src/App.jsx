@@ -11,7 +11,7 @@ function App() {
 
   const fetchEntries = async () => {
     try {
-      const res = await fetch('http://localhost:5000/api/entries');
+      const res = await fetch('http://149.248.61.125:5000/api/entries');
       if (!res.ok) throw new Error("Could not fetch database records");
       const data = await res.json();
       setEntries(data);

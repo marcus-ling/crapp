@@ -25,12 +25,11 @@ export default function ReportExportView({ entries = [] }) {
     async function fetchLiveAISummary() {
       try {
         setIsLoadingAI(true);
-        // Note: Replace 'localhost:5000' with your live Vultr server IP when deploying!
-        const response = await fetch('http://localhost:5000/api/insights/ai-summary', {
+        // Note: Replace 'localhost:5000' with your live Vultrserver IP when deploying!
+        const response = await fetch('http://149.248.61.125:5000/api/insights/ai-summary', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' }
         });
-        const data = await response.json();
         if (data.summary) {
           setLiveAISummary(data.summary);
         }

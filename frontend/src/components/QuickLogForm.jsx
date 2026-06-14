@@ -33,7 +33,7 @@ export default function QuickLogForm({ onEntryAdded }) {
     e.preventDefault();
     
     try {
-      const res = await fetch('http://localhost:5000/api/entries', {
+      const res = await fetch('http://149.248.61.125:5000/api/entries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
